@@ -7,8 +7,9 @@
 
 #include "my_pio.pio.h"
 
-constexpr std::array<input, 2677> InputInst::inputs;
+constexpr std::array<input, 5161> InputInst::inputs;
 int frame;
+uint64_t time;
 
 // PIO Shifts to the right by default
 // In: pushes batches of 8 shifted left, i.e we get [0x40, 0x03, rumble (the end bit is never pushed)]
@@ -38,22 +39,27 @@ GCReport getReport() {
     GCReport ret = defaultGcReport;
     InputInst inputInst;
 
-    if (!inputInst.frameValid(frame/2))
-        return ret;
+    if (time == 0) {
+        frame = 0;
+        time = time_us_64();
+    }
+    else {
+        // Time diff
+        uint64_t timeDiff = time_us_64() - time;
+        frame = (int)((double)timeDiff / 16683.35);
+    }
     
-    ret.a = (uint8_t) inputInst.getButton(frame/2, BUTTON_A);
-    ret.b = (uint8_t) inputInst.getButton(frame/2, BUTTON_B);
-    ret.l = (uint8_t) inputInst.getButton(frame/2, BUTTON_L);
+    ret.a = (uint8_t) inputInst.getButton(frame, BUTTON_A);
+    ret.b = (uint8_t) inputInst.getButton(frame, BUTTON_B);
+    ret.l = (uint8_t) inputInst.getButton(frame, BUTTON_L);
 
-    ret.xStick = (uint8_t) inputInst.getStick(frame/2, STICK_X);
-    ret.yStick = (uint8_t) inputInst.getStick(frame/2, STICK_Y);
+    ret.xStick = (uint8_t) inputInst.getStick(frame, STICK_X);
+    ret.yStick = (uint8_t) inputInst.getStick(frame, STICK_Y);
 
-    ret.dLeft = (uint8_t) inputInst.getDPadLeft(frame/2);
-    ret.dRight = (uint8_t) inputInst.getDPadRight(frame/2);
-    ret.dUp = (uint8_t) inputInst.getDPadUp(frame/2);
-    ret.dDown = (uint8_t) inputInst.getDPadDown(frame/2);
-
-    frame++;
+    ret.dLeft = (uint8_t) inputInst.getDPadLeft(frame);
+    ret.dRight = (uint8_t) inputInst.getDPadRight(frame);
+    ret.dUp = (uint8_t) inputInst.getDPadUp(frame);
+    ret.dDown = (uint8_t) inputInst.getDPadDown(frame);
 
     return ret;
 }
@@ -117,6 +123,7 @@ void fail(const uint& offset, const pio_sm_config& config) {
 
 void enterMode(int dataPin) {
     frame = 0;
+    time = 0;
     gpio_init(dataPin);
     gpio_set_dir(dataPin, GPIO_IN);
     gpio_pull_up(dataPin);
