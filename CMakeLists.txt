@@ -26,8 +26,6 @@ foreach(ULT_OPTION ${ULT_OPTIONS})
   add_executable(${TARGET_NAME}
     src/main.cpp
     src/communication_protocols/joybus.cpp
-    src/dac_algorithms/melee_F1.cpp
-    src/gpio_to_button_sets/F1.cpp
   )
   
   # Add compile definitions for the current option
