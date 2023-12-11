@@ -1,6 +1,8 @@
 #ifndef __INPUTS_HPP
 #define __INPUTS_HPP
 
+#include "gcReport.hpp"
+
 #include <array>
 
 typedef std::array<int, 6> input;
@@ -14,43 +16,7 @@ typedef std::array<int, 6> input;
 
 class InputInst {
 public:
-    int getStick(int frame, int index) {
-        int inputRaw = inputs[frame][index];
-
-        switch (inputRaw) {
-            case -7:
-                return 59;
-            case -6:
-                return 68;
-            case -5:
-                return 77;
-            case -4:
-                return 86;
-            case -3:
-                return 95;
-            case -2:
-                return 104;
-            case -1:
-                return 112;
-            case 0:
-                return 128;
-            case 1:
-                return 152;
-            case 2:
-                return 161;
-            case 3:
-                return 170;
-            case 4:
-                return 179;
-            case 5:
-                return 188;
-            case 6:
-                return 197;
-            case 7:
-            default:
-                return 205;
-        }
-    }
+    int getStick(int frame, int index);
     
     bool getButton(int frame, int index) { return inputs[frame][index] != 0; }
 
@@ -60,6 +26,8 @@ public:
     bool getDPadRight(int frame) { return inputs[frame][5] == 4; }
 
     bool frameValid(int frame) { return frame < inputs.size(); }
+
+    GCReport getReport(int frame);
 
 private:
     static constexpr std::array<input, 5161> inputs = {

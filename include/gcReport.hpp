@@ -1,5 +1,5 @@
-#ifndef COMMUNICATION_PROTOCOLS_JOYBUS__GCREPORT
-#define COMMUNICATION_PROTOCOLS_JOYBUS__GCREPORT
+#ifndef __GCREPORT
+#define __GCREPORT
 
 #include "pico/stdlib.h"
 

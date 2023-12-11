@@ -37,10 +37,20 @@ int InputInst::getStick(int frame, int index) {
             return 205;
     }
 }
-    
-bool InputInst::getButton(int frame, int index) { return inputs[frame][index] != 0; }
-bool InputInst::getDPadUp(int frame) { return inputs[frame][5] == 1; }
-bool InputInst::getDPadDown(int frame) { return inputs[frame][5] == 2; }
-bool InputInst::getDPadLeft(int frame) { return inputs[frame][5] == 3; }
-bool InputInst::getDPadRight(int frame) { return inputs[frame][5] == 4; }
-bool InputInst::frameValid(int frame) { return frame < inputs.size(); }
+
+GCReport InputInst::getReport(int frame) {
+    GCReport ret = defaultGcReport;
+    ret.a = (uint8_t) getButton(frame, BUTTON_A);
+    ret.b = (uint8_t) getButton(frame, BUTTON_B);
+    ret.l = (uint8_t) getButton(frame, BUTTON_L);
+
+    ret.xStick = (uint8_t) getStick(frame, STICK_X);
+    ret.yStick = (uint8_t) getStick(frame, STICK_Y);
+
+    ret.dLeft = (uint8_t) getDPadLeft(frame);
+    ret.dRight = (uint8_t) getDPadRight(frame);
+    ret.dUp = (uint8_t) getDPadUp(frame);
+    ret.dDown = (uint8_t) getDPadDown(frame);
+
+    return ret;
+}
