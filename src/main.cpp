@@ -1,17 +1,23 @@
-#include "pico/stdio.h"
 #include "pico/stdlib.h"
-#include "hardware/pio.h"
 #include "my_pio.pio.h"
 
-#include "global.hpp"
-#include "inputs.hpp"
+#include "RKGReader.hpp"
 
-constexpr std::array<input, 5161> InputInst::inputs;
-int frame;
-uint64_t time;
-InputInst inputInst;
+#define GC_DATA_PIN 28
+
+#define MICROSECONDS_IN_SECOND 1000000
+#define FRAME_RATE 59.94
+#define MICROSECONDS_PER_FRAME (MICROSECONDS_IN_SECOND / FRAME_RATE)
+
+// binary ghost data included from file.S
+extern char rkg[];
+
 pio_sm_config config;
 uint offset;
+
+RKGReader* rkgReader = nullptr;
+uint16_t frame;
+uint32_t time;
 
 // PIO Shifts to the right by default
 // In: pushes batches of 8 shifted left, i.e we get [0x40, 0x03, rumble (the end bit is never pushed)]
@@ -37,21 +43,20 @@ void convertToPio(const uint8_t* command, const int len, uint32_t* result, int& 
     result[len / 2] += 3 << (2 * (8 * (len % 2)));
 }
 
-GCReport getReport() {
+GCPadStatus GetGCPadStatus() {
     if (time == 0) {
         frame = 0;
         time = time_us_64();
     }
     else {
-        // Time diff
-        uint64_t timeDiff = time_us_64() - time;
-        frame = (int)((double)timeDiff / 16683.35);
+        uint32_t timeDiff = time_us_32() - time;
+        frame = (int)((double)timeDiff / MICROSECONDS_PER_FRAME);
     }
     
-    return inputInst.getReport(frame);
+    return rkgReader->GetGCPadStatus(frame);
 }
 
-void resetState(uint32_t* result, uint32_t resultLen) {
+void sendData(uint32_t* result, uint32_t resultLen) {
     pio_sm_set_enabled(pio0, 0, false);
     pio_sm_init(pio0, 0, offset+save_offset_outmode, &config);
     pio_sm_set_enabled(pio0, 0, true);
@@ -66,7 +71,7 @@ void probe() {
     convertToPio(probeResponse, 3, result, resultLen);
     sleep_us(6); // 3.75us into the bit before end bit => 6.25 to wait if the end-bit is 5us long
 
-    resetState(result, resultLen);
+    sendData(result, resultLen);
 }
 
 void origin() {
@@ -76,22 +81,21 @@ void origin() {
     convertToPio(originResponse, 10, result, resultLen);
     // Here we don't wait because convertToPio takes time
 
-    resetState(result, resultLen);
+    sendData(result, resultLen);
 }
 
 void poll() {
     uint8_t buffer;
     buffer = pio_sm_get_blocking(pio0, 0);
     buffer = pio_sm_get_blocking(pio0, 0);
-    gpio_put(rumblePin, buffer & 1);
 
-    GCReport gcReport = getReport();
+    GCPadStatus pad = GetGCPadStatus();
 
     uint32_t result[5];
     int resultLen;
-    convertToPio((uint8_t*)(&gcReport), 8, result, resultLen);
+    convertToPio((uint8_t*)(&pad), GCPADSTATUS_SIZE, result, resultLen);
 
-    resetState(result, resultLen);
+    sendData(result, resultLen);
 }
 
 void fail() {
@@ -104,22 +108,20 @@ void fail() {
 void init() {
     frame = 0;
     time = 0;
-    gpio_init(gcDataPin);
-    gpio_set_dir(gcDataPin, GPIO_IN);
-    gpio_pull_up(gcDataPin);
-
-    gpio_init(rumblePin);
-    gpio_set_dir(rumblePin, GPIO_OUT);
+    rkgReader = new RKGReader(rkg);
+    gpio_init(GC_DATA_PIN);
+    gpio_set_dir(GC_DATA_PIN, GPIO_IN);
+    gpio_pull_up(GC_DATA_PIN);
 
     sleep_us(100); // Stabilize voltages
 
-    pio_gpio_init(pio0, gcDataPin);
+    pio_gpio_init(pio0, GC_DATA_PIN);
     offset = pio_add_program(pio0, &save_program);
 
     config = save_program_get_default_config(offset);
-    sm_config_set_in_pins(&config, gcDataPin);
-    sm_config_set_out_pins(&config, gcDataPin, 1);
-    sm_config_set_set_pins(&config, gcDataPin, 1);
+    sm_config_set_in_pins(&config, GC_DATA_PIN);
+    sm_config_set_out_pins(&config, GC_DATA_PIN, 1);
+    sm_config_set_set_pins(&config, GC_DATA_PIN, 1);
     sm_config_set_clkdiv(&config, 5);
     sm_config_set_out_shift(&config, true, false, 32);
     sm_config_set_in_shift(&config, false, true, 8);
@@ -135,19 +137,21 @@ int main() {
         uint8_t buffer = pio_sm_get_blocking(pio0, 0);
         void (*func)();
         switch(buffer) {
-        case 0x00:
-            func = probe;
-            break;
-        case 0x41:
-            func = origin;
-            break;
-        case 0x40:
-            func = poll;
-            break;
-        default:
-            func = fail;
+            case 0x00:
+                func = probe;
+                break;
+            case 0x41:
+                func = origin;
+                break;
+            case 0x40:
+                func = poll;
+                break;
+            default:
+                func = fail;
         }
 
         (*func)();
     }
+
+    delete rkgReader;
 }

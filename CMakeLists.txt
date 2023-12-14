@@ -16,7 +16,8 @@ set(TARGET_NAME "pico_tas_playback")
 # Add an executable target
 add_executable(${TARGET_NAME}
 src/main.cpp
-src/inputs.cpp
+src/RKGReader.cpp
+src/file.S
 )
 
 # Generate the PIO header
