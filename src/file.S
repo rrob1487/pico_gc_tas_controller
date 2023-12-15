@@ -2,4 +2,4 @@
 .balign 4
 .global rkg
 rkg:
-.incbin "C:\\PATH\\TO\\RKG.rkg"
+.incbin "../LC_Demo.rkg"
