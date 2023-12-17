@@ -227,7 +227,7 @@ GCPadStatus RKGReader::GetGCPadStatus(uint16_t frame) {
 
     uint8_t faceData = GetFace(frame);
     uint8_t dirData = GetDir(frame);
-    uint8_t trickData = GetTrick(frame);
+    DPad trickData = (DPad)GetTrick(frame);
 
     ret.a = (bool)(faceData & 0x01);
     ret.b = (bool)(faceData & 0x02);
@@ -236,10 +236,10 @@ GCPadStatus RKGReader::GetGCPadStatus(uint16_t frame) {
     ret.xStick = RawToStick(dirData >> 4 & 0x0F);
     ret.yStick = RawToStick(dirData & 0x0F);
 
-    ret.dLeft = (bool)(trickData & 0x3 == 0x3);
-    ret.dRight = (bool)(trickData & 0x4);
-    ret.dUp = (bool)(trickData & 0x1);
-    ret.dDown = (bool)(trickData & 0x2);
+    ret.dUp = trickData == DPad::DUp;
+    ret.dDown = trickData == DPad::DDown;
+    ret.dLeft = trickData == DPad::DLeft;
+    ret.dRight = trickData == DPad::DRight;
 
     // If new frame, update frame count
     if (frame > m_frameCount)

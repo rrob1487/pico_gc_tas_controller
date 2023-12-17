@@ -7,6 +7,13 @@
 
 #define INPUT_HEADER_SIZE 0x8
 
+enum DPad {
+    DUp = 1,
+    DDown = 2,
+    DLeft = 3,
+    DRight = 4
+};
+
 class RKGReader {
 
 public:
