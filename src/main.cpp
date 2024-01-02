@@ -46,7 +46,7 @@ void convertToPio(const uint8_t* command, const int len, uint32_t* result, int& 
 GCPadStatus GetGCPadStatus() {
     if (time == 0) {
         frame = 0;
-        time = time_us_64();
+        time = time_us_32();
     }
     else {
         uint32_t timeDiff = time_us_32() - time;
