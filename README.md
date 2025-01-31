@@ -1,36 +1,47 @@
-# MKWii TAS Playback via Raspberry Pi Pico
+# Raspberry Pi Pico Replay Device for Mario Kart Wii
 
-This software allows for the playback of Mario Kart Wii time trial ghost data on console using a Raspberry Pi Pico and an exposed Gamecube cable dataline connected to a Wii. Software is kept simple thanks to framecount determinism introduced by starting a time trial race with the controller unplugged. Simply plugging in the microcontroller synchronizes the frame timings for the race. This project is forked from [pico-rectangle](https://github.com/JulienBernard3383279/pico-rectangle) as data encoding and transmission timings are already handled. Note that not all ghost data will play back currently (see the [Input Range](#inputrange) section).
+This software allows for the playback of Mario Kart Wii time trial ghost data on console using a Raspberry Pi Pico and an exposed Gamecube cable dataline connected to a Wii. It's consistently reliable thanks to framecount determinism by starting a time trial race with the controller unplugged because the race pauses on the same frame each time. Plug in the microcontroller with this software and it will close the unpause the game and thereby synchronize frame timings for the race. This project is forked from [pico-rectangle](https://github.com/JulienBernard3383279/pico-rectangle) as data encoding and transmission timings are already handled. Note that not all ghost data will play back currently (see the [Input Range](#inputrange) section).
 
 Please consult the [Legal information and license](https://github.com/JulienBernard3383279/pico-rectangle#legalInformationAndLicense) section in the upstream repository before using this firmware.
 
 ## Hardware Required
 
-In order to achieve playback sync, we need the following:
-- [Raspberry Pi Pico](https://a.co/d/3ektdH2)
+In order to achieve playback sync, I had the following:
+- [Raspberry Pi Pico](https://a.co/d/1lbuRqZ)
 - [2x 20-pin headers](https://a.co/d/4R5S7OQ)
 - [Breadboard kit](https://a.co/d/5nFPmrP)
 - [Soldering iron + solder](https://a.co/d/6OQDzBK)
-- [Gamecube cable](https://a.co/d/5JQs53b)*
+- [Gamecube cable](https://a.co/d/5JQs53b)
 - [28 gauge wire stripper](https://a.co/d/e9WKf9y)
 - [2.54mm Dupont connector kit](https://a.co/d/8zIctFd)
 - [SN-28B Crimper](https://a.co/d/5cAGSTc)
 
-*If you have an old Gamecube controller you could use that wire, but I didn't want to sacrifice a Gamecube controller for this project.
+#### Improvements to Hardware Required
+
+I bought stuff before I had an actual game plan, so I didn't consider that the Pico didn't come with header pins already. You can find these pre-soldered online for near the same price, if you don't have your own soldering kit. If you DO have your own soldering kit, then you can probably skip purchasing the breadboard kit, the Dupont connectors, and the crimper. For the Gamecube cables, you could also just sacrifice an old controller.
 
 ## Steps to Assemble
 
 1. Solder the Pico to header pins. Unlike other Raspberry Pis, the Pico does not come with headers pre-soldered. Connect Pico headers to breadboard kit.
-2. Cut off the end of the Gamecube cable that doesn't plug into the console. Strip the housing off with something like an exacto knife. Wire strippers didn't work for me as they damaged the insulation of the inside wires.
-3. Locate the data wire. On OEM cables this is the red one, but if using a third-party controller, you should determine the cable by opening the housing.
-4. Crimp the data wire to a female Dupont connector. Plug the data wire into the GP28 pin on the breadboard kit.
-5. (Optional) Locate the 3.3V wire. Crimp that as well and plug into VSYS. Alternatively, you can skip this step if you plan to power the Pico via USB. NOTE: If you do this step, don't have this board plugged via USB and via its Gamecube port at the same time. This would feed the USB 5v to the 3v line of the console and likely damage it.
+2. Cut off the end of the Gamecube cable that does **NOT** plug into the console. Strip the housing off with something like an exacto knife.
+3. Locate the data wire. On OEM cables this is the red one, but if using a third-party controller, you should determine the cable by opening the housing on both ends and comparing with a diagram of the pins in the controller port.
+4. Crimp the data wire to a Dupont connector. Plug the data wire into the GP28 pin on the breadboard kit.
+5. (Optional) Locate the 3.3V wire. Crimp that as well and plug into VSYS. Alternatively, you can skip this step if you plan to power the Pico via USB. NOTE: **If you do this step, do NOT have this board plugged via USB and via its Gamecube port at the same time. This would feed the USB 5v to the 3v line of the console and likely damage it.**
+
+## Install Dependencies
+
+For easiest install, I suggest using a Unix environment since that's what I used. Specifically, I just used Ubuntu running through `wsl`.
+- `sudo apt-get install build-essential gcc-arm-none-eabi cmake -y`
 
 ## How to Run
 
 1. Clone repo.
 2. In src/file.S, replace file path with a RKG file of your choosing. Be sure to verify that its input set does not contain any tuples outside the valid in-game controller [input range](#inputrange).
-3. Build using CMake.
+3. Starting from the root directory, run the following:
+  - `mkdir build`
+  - `cd build`
+  - `cmake ..`
+  - `make`
 4. With the Pico USB disconnected, hold down the BOOTSEL button on-board the Pico, and plug the Pico into your computer.
 5. Copy the .uf2 over to the Pico which should appear as a new drive.
 6. Disconnect the Pico from your computer.
