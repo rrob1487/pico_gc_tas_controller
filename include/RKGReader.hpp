@@ -7,29 +7,30 @@
 
 #define INPUT_HEADER_SIZE 0x8
 
-enum DPad {
-    DUp = 1,
-    DDown = 2,
-    DLeft = 3,
-    DRight = 4
+enum class DPad {
+    None = 0,
+    Up = 1,
+    Down = 2,
+    Left = 3,
+    Right = 4,
 };
 
 class RKGReader {
-
 public:
-    RKGReader(char* pData);
+    RKGReader(char *pData);
     ~RKGReader();
 
-    GCPadStatus GetGCPadStatus(uint16_t frame);
+    GCPadStatus CalcFrame(uint16_t frame);
 
 private:
-    char* YAZ1Decompress(char* pData);
-    uint16_t DecompressBlock(char* src, int offset, int srcSize, char* dst, uint32_t uncompressedSize);
+    char *YAZ1Decompress(char *pData);
+    uint16_t DecompressBlock(char *src, int offset, int srcSize, char *dst,
+            uint32_t uncompressedSize);
 
-    uint8_t GetFace(uint16_t frame);
-    uint8_t GetDir(uint16_t frame);
-    uint8_t RawToStick(uint8_t raw);
-    uint8_t GetTrick(uint16_t frame);
+    uint8_t CalcFace(uint16_t frame);
+    uint8_t CalcDir(uint16_t frame);
+    uint8_t RawToStick(uint8_t raw) const;
+    DPad CalcTrick(uint16_t frame);
 
     // Current computed frame (since sometimes we will poll the same frame multiple times)
     uint16_t m_frameCount;
@@ -54,7 +55,7 @@ private:
     uint8_t m_dirDuration;
     uint16_t m_trickDuration; // may be greater than 256
 
-    char* m_decodedData;
+    char *m_decodedData;
     bool m_compressed;
 };
 
