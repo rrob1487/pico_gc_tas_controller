@@ -10,7 +10,7 @@ constexpr float FRAME_RATE = 59.94f;
 constexpr float MICROSECONDS_PER_FRAME = MICROSECONDS_IN_SECOND / FRAME_RATE;
 
 // binary ghost data included from file.S
-extern char g_rkg[];
+extern uint8_t g_rkg[];
 
 pio_sm_config g_config;
 uint32_t g_offset;

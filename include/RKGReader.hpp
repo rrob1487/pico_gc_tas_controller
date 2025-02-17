@@ -16,14 +16,14 @@ enum class DPad {
 
 class RKGReader {
 public:
-    RKGReader(char *pData);
+    RKGReader(uint8_t *pData);
     ~RKGReader();
 
     GCPadStatus CalcFrame(uint16_t frame);
 
 private:
-    char *YAZ1Decompress(char *pData);
-    uint16_t DecompressBlock(char *src, int offset, int srcSize, char *dst,
+    uint8_t *YAZ1Decompress(uint8_t *pData);
+    uint16_t DecompressBlock(uint8_t *src, int offset, int srcSize, uint8_t *dst,
             uint32_t uncompressedSize);
 
     uint8_t CalcFace(uint16_t frame);
@@ -40,9 +40,9 @@ private:
     uint16_t m_trickCount;
 
     // Track the start of each data section so that we don't recompute every input poll
-    uint16_t m_faceStart;
-    uint16_t m_dirStart;
-    uint16_t m_trickStart;
+    uint8_t *m_faceStart;
+    uint8_t *m_dirStart;
+    uint8_t *m_trickStart;
 
     // What is the current tuple we're looking at?
     uint16_t m_faceIndex;
@@ -54,6 +54,6 @@ private:
     uint8_t m_dirDuration;
     uint16_t m_trickDuration; // may be greater than 256
 
-    char *m_decodedData;
+    uint8_t *m_decodedData;
     bool m_compressed;
 };
