@@ -10,20 +10,20 @@ constexpr float FRAME_RATE = 59.94f;
 constexpr float MICROSECONDS_PER_FRAME = MICROSECONDS_IN_SECOND / FRAME_RATE;
 
 // binary ghost data included from file.S
-extern char rkg[];
+extern char g_rkg[];
 
-pio_sm_config config;
-uint32_t offset;
+pio_sm_config g_config;
+uint32_t g_offset;
 
-RKGReader *rkgReader = nullptr;
-uint16_t frame;
-uint32_t time;
+RKGReader g_rkgReader = RKGReader(g_rkg);
+uint16_t g_frame;
+uint32_t g_time;
 
 // PIO Shifts to the right by default
 // In: pushes batches of 8 shifted left, i.e we get [0x40, 0x03, rumble (the end bit is never
 // pushed)] Out: We push commands for a right shift with an enable pin, ie 5 (101) would be
 // 0b11'10'11 So in doesn't need post processing but out does
-void convertToPio(const uint8_t *command, const uint32_t len, uint32_t *result,
+static void convertToPio(const uint8_t *command, const uint32_t len, uint32_t *result,
         uint32_t &resultLen) {
     if (len == 0) {
         resultLen = 0;
@@ -45,21 +45,21 @@ void convertToPio(const uint8_t *command, const uint32_t len, uint32_t *result,
     result[len / 2] += 3 << (2 * (8 * (len % 2)));
 }
 
-GCPadStatus GetGCPadStatus() {
-    if (time == 0) {
-        frame = 0;
-        time = time_us_32();
+static GCPadStatus GetGCPadStatus() {
+    if (g_time == 0) {
+        g_frame = 0;
+        g_time = time_us_32();
     } else {
-        uint32_t timeDiff = time_us_32() - time;
-        frame = static_cast<uint16_t>(timeDiff / MICROSECONDS_PER_FRAME);
+        uint32_t timeDiff = time_us_32() - g_time;
+        g_frame = static_cast<uint16_t>(timeDiff / MICROSECONDS_PER_FRAME);
     }
 
-    return rkgReader->CalcFrame(frame);
+    return g_rkgReader.CalcFrame(g_frame);
 }
 
-void sendData(uint32_t *result, uint32_t resultLen) {
+static void sendData(uint32_t *result, uint32_t resultLen) {
     pio_sm_set_enabled(pio0, 0, false);
-    pio_sm_init(pio0, 0, offset + save_offset_outmode, &config);
+    pio_sm_init(pio0, 0, g_offset + save_offset_outmode, &g_config);
     pio_sm_set_enabled(pio0, 0, true);
 
     for (uint32_t i = 0; i < resultLen; i++) {
@@ -67,7 +67,7 @@ void sendData(uint32_t *result, uint32_t resultLen) {
     }
 }
 
-void probe() {
+static void probe() {
     uint8_t probeResponse[3] = {0x09, 0x00, 0x03};
     uint32_t result[2];
     uint32_t resultLen;
@@ -77,7 +77,7 @@ void probe() {
     sendData(result, resultLen);
 }
 
-void origin() {
+static void origin() {
     uint8_t originResponse[10] = {0x00, 0x80, 128, 128, 128, 128, 0, 0, 0, 0};
     uint32_t result[6];
     uint32_t resultLen;
@@ -87,7 +87,7 @@ void origin() {
     sendData(result, resultLen);
 }
 
-void poll() {
+static void poll() {
     uint8_t buffer;
     buffer = pio_sm_get_blocking(pio0, 0);
     buffer = pio_sm_get_blocking(pio0, 0);
@@ -96,22 +96,21 @@ void poll() {
 
     uint32_t result[5];
     uint32_t resultLen;
-    convertToPio(reinterpret_cast<uint8_t *>(&pad), GCPADSTATUS_SIZE, result, resultLen);
+    convertToPio(reinterpret_cast<uint8_t *>(&pad), sizeof(GCPadStatus), result, resultLen);
 
     sendData(result, resultLen);
 }
 
-void fail() {
+static void fail() {
     pio_sm_set_enabled(pio0, 0, false);
     sleep_us(400);
-    pio_sm_init(pio0, 0, offset + save_offset_inmode, &config);
+    pio_sm_init(pio0, 0, g_offset + save_offset_inmode, &g_config);
     pio_sm_set_enabled(pio0, 0, true);
 }
 
-void init() {
-    frame = 0;
-    time = 0;
-    rkgReader = new RKGReader(rkg);
+static void init() {
+    g_frame = 0;
+    g_time = 0;
 
     gpio_init(GC_DATA_PIN);
     gpio_set_dir(GC_DATA_PIN, GPIO_IN);
@@ -120,17 +119,17 @@ void init() {
     sleep_us(100); // Stabilize voltages
 
     pio_gpio_init(pio0, GC_DATA_PIN);
-    offset = pio_add_program(pio0, &save_program);
+    g_offset = pio_add_program(pio0, &save_program);
 
-    config = save_program_get_default_config(offset);
-    sm_config_set_in_pins(&config, GC_DATA_PIN);
-    sm_config_set_out_pins(&config, GC_DATA_PIN, 1);
-    sm_config_set_set_pins(&config, GC_DATA_PIN, 1);
-    sm_config_set_clkdiv(&config, 5);
-    sm_config_set_out_shift(&config, true, false, 32);
-    sm_config_set_in_shift(&config, false, true, 8);
+    g_config = save_program_get_default_config(g_offset);
+    sm_config_set_in_pins(&g_config, GC_DATA_PIN);
+    sm_config_set_out_pins(&g_config, GC_DATA_PIN, 1);
+    sm_config_set_set_pins(&g_config, GC_DATA_PIN, 1);
+    sm_config_set_clkdiv(&g_config, 5);
+    sm_config_set_out_shift(&g_config, true, false, 32);
+    sm_config_set_in_shift(&g_config, false, true, 8);
 
-    pio_sm_init(pio0, 0, offset, &config);
+    pio_sm_init(pio0, 0, g_offset, &g_config);
     pio_sm_set_enabled(pio0, 0, true);
 }
 
@@ -153,6 +152,4 @@ int main() {
             fail();
         }
     }
-
-    delete rkgReader;
 }

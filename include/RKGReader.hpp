@@ -1,11 +1,10 @@
-#ifndef __RKGREADER_HPP
-#define __RKGREADER_HPP
-
-#include <stdint.h>
+#pragma once
 
 #include "GCPadStatus.hpp"
 
-#define INPUT_HEADER_SIZE 0x8
+#include <cstddef>
+
+static constexpr size_t INPUT_HEADER_SIZE = 0x8;
 
 enum class DPad {
     None = 0,
@@ -58,5 +57,3 @@ private:
     char *m_decodedData;
     bool m_compressed;
 };
-
-#endif

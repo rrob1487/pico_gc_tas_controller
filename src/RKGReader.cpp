@@ -6,12 +6,11 @@
 // YAZ1 decompression code was translated from AtishaRibeiro
 // See https://github.com/AtishaRibeiro/InputDisplay/blob/master/InputDisplay/Core/Yaz1dec.cs
 
-RKGReader::RKGReader(char *pData)
-    : m_decodedData(pData + 0x88), m_faceIndex(0), m_dirIndex(0), m_trickIndex(0),
-      m_faceDuration(0), m_dirDuration(0), m_trickDuration(0), m_frameCount(0) {
-    // Maintain a pointer to the start of input data header
-    m_decodedData = pData + 0x88;
+static constexpr size_t HEADER_SIZE = 0x88;
 
+RKGReader::RKGReader(char *pData)
+    : m_decodedData(pData + HEADER_SIZE), m_faceIndex(0), m_dirIndex(0), m_trickIndex(0),
+      m_faceDuration(0), m_dirDuration(0), m_trickDuration(0), m_frameCount(0) {
     m_compressed = pData[0xC] & 0x8;
     if (m_compressed) {
         m_decodedData = YAZ1Decompress(m_decodedData);
@@ -199,7 +198,7 @@ DPad RKGReader::CalcTrick(uint16_t frame) {
 /// @brief Convert raw 0-14 analog stick values to their analog equivalent (keeping in mind
 /// that diagonal inputs are restricted to a unit circle in-game).
 uint8_t RKGReader::RawToStick(uint8_t raw) const {
-    constexpr std::array<uint8_t, 15> sticks = {{
+    static constexpr std::array<uint8_t, 15> sticks = {{
             59,
             68,
             77,
@@ -221,25 +220,27 @@ uint8_t RKGReader::RawToStick(uint8_t raw) const {
 }
 
 GCPadStatus RKGReader::CalcFrame(uint16_t frame) {
-    GCPadStatus ret = GCPADSTATUS_DEFAULT;
+    constexpr uint16_t FRAMES_AFTER_RECONNECT = 283;
+
+    GCPadStatus ret = s_defaultGCPadStatus;
 
     // Factor in controller disconnection screen A press + fade out
     if (frame == 0) {
         ret.a = 1;
         return ret;
-    } else if (frame < 283) {
+    } else if (frame < FRAMES_AFTER_RECONNECT) {
         return ret;
     }
 
-    frame -= 283;
+    frame -= FRAMES_AFTER_RECONNECT;
 
-    uint8_t faceData = GetFace(frame);
-    uint8_t dirData = GetDir(frame);
-    DPad trickData = GetTrick(frame);
+    uint8_t faceData = CalcFace(frame);
+    uint8_t dirData = CalcDir(frame);
+    DPad trickData = CalcTrick(frame);
 
-    ret.a = (bool)(faceData & 0x01);
-    ret.b = (bool)(faceData & 0x02);
-    ret.l = (bool)(faceData & 0x04);
+    ret.a = !!(faceData & 0x01);
+    ret.b = !!(faceData & 0x02);
+    ret.l = !!(faceData & 0x04);
 
     ret.xStick = RawToStick(dirData >> 4 & 0x0F);
     ret.yStick = RawToStick(dirData & 0x0F);

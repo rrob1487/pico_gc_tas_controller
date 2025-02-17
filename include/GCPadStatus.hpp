@@ -1,9 +1,6 @@
-#ifndef __GCPADSTATUS
-#define __GCPADSTATUS
+#pragma once
 
-#include <cstddef>
-
-static constexpr size_t GCPADSTATUS_SIZE = 8;
+#include <cstdint>
 
 struct __attribute__((packed)) GCPadStatus {
     uint8_t a : 1;
@@ -27,9 +24,9 @@ struct __attribute__((packed)) GCPadStatus {
     uint8_t analogL;
     uint8_t analogR;
 };
-static_assert(sizeof(GCPadStatus) == GCPADSTATUS_SIZE);
+static_assert(sizeof(GCPadStatus) == 0x8);
 
-static constexpr GCPadStatus GCPADSTATUS_DEFAULT = {
+static constexpr GCPadStatus s_defaultGCPadStatus = {
         .a = 0,
         .b = 0,
         .x = 0,
@@ -51,5 +48,3 @@ static constexpr GCPadStatus GCPADSTATUS_DEFAULT = {
         .analogL = 0,
         .analogR = 0,
 };
-
-#endif
