@@ -8,20 +8,20 @@
 
 static constexpr size_t HEADER_SIZE = 0x88;
 
-RKGReader::RKGReader(char *pData)
+RKGReader::RKGReader(uint8_t *pData)
     : m_decodedData(pData + HEADER_SIZE), m_faceIndex(0), m_dirIndex(0), m_trickIndex(0),
       m_faceDuration(0), m_dirDuration(0), m_trickDuration(0), m_frameCount(0) {
-    m_compressed = pData[0xC] & 0x8;
+    m_compressed = !!(pData[0xC] & 0x8);
     if (m_compressed) {
         m_decodedData = YAZ1Decompress(m_decodedData);
     }
 
     // Swap endianness
-    m_faceCount = m_decodedData[0] << 0x8 | m_decodedData[1];
-    m_dirCount = m_decodedData[2] << 0x8 | m_decodedData[3];
-    m_trickCount = m_decodedData[4] << 0x8 | m_decodedData[5];
+    m_faceCount = __builtin_bswap16(*reinterpret_cast<uint16_t *>(m_decodedData));
+    m_dirCount = __builtin_bswap16(*reinterpret_cast<uint16_t *>(m_decodedData + 2));
+    m_trickCount = __builtin_bswap16(*reinterpret_cast<uint16_t *>(m_decodedData + 4));
 
-    m_faceStart = INPUT_HEADER_SIZE;
+    m_faceStart = m_decodedData + INPUT_HEADER_SIZE;
     m_dirStart = m_faceStart + 2 * m_faceCount;
     m_trickStart = m_dirStart + 2 * m_dirCount;
 }
@@ -32,8 +32,8 @@ RKGReader::~RKGReader() {
     }
 }
 
-char *RKGReader::YAZ1Decompress(char *pData) {
-    char *pRet = nullptr;
+uint8_t *RKGReader::YAZ1Decompress(uint8_t *pData) {
+    uint8_t *pRet = nullptr;
     uint32_t retLen = 0;
 
     // get compressed length
@@ -60,7 +60,7 @@ char *RKGReader::YAZ1Decompress(char *pData) {
         memcpy(&blockSize, pData + readBytes, sizeof(uint32_t));
         blockSize = __builtin_bswap32(blockSize); // Swap endianness
 
-        char *blockDecompressed = new char[blockSize];
+        uint8_t *blockDecompressed = new uint8_t[blockSize];
 
         // Seek past 4 byte size + 8 unused bytes
         readBytes += 12;
@@ -69,8 +69,8 @@ char *RKGReader::YAZ1Decompress(char *pData) {
                 blockSize);
 
         // Add to main array
-        char *pRetOld = pRet;
-        pRet = new char[retLen + blockSize];
+        uint8_t *pRetOld = pRet;
+        pRet = new uint8_t[retLen + blockSize];
         memcpy(pRet, pRetOld, retLen);
         delete[] pRetOld;
         memcpy(pRet + retLen, blockDecompressed, blockSize);
@@ -81,7 +81,7 @@ char *RKGReader::YAZ1Decompress(char *pData) {
     return pRet;
 }
 
-uint16_t RKGReader::DecompressBlock(char *src, int offset, int srcSize, char *dst,
+uint16_t RKGReader::DecompressBlock(uint8_t *src, int offset, int srcSize, uint8_t *dst,
         uint32_t uncompressedSize) {
     uint16_t srcPos = 0;
     uint16_t destPos = 0;
@@ -133,7 +133,7 @@ uint8_t RKGReader::CalcFace(uint16_t frame) {
         return 0;
     }
 
-    uint8_t tupleDuration = m_decodedData[m_faceStart + (2 * m_faceIndex) + 1];
+    uint8_t tupleDuration = m_faceStart[2 * m_faceIndex + 1];
 
     // If new frame, then update our trackers
     if (frame > m_frameCount && ++m_faceDuration == tupleDuration) {
@@ -141,7 +141,7 @@ uint8_t RKGReader::CalcFace(uint16_t frame) {
         m_faceDuration = 0;
     }
 
-    uint8_t inputs = m_decodedData[m_faceStart + (2 * m_faceIndex)];
+    uint8_t inputs = m_faceStart[2 * m_faceIndex];
 
     return inputs;
 }
@@ -152,7 +152,7 @@ uint8_t RKGReader::CalcDir(uint16_t frame) {
         return 0;
     }
 
-    uint8_t tupleDuration = m_decodedData[m_dirStart + (2 * m_dirIndex) + 1];
+    uint8_t tupleDuration = m_dirStart[2 * m_dirIndex + 1];
 
     // If new frame, then update our trackers
     if (frame > m_frameCount && ++m_dirDuration == tupleDuration) {
@@ -160,7 +160,7 @@ uint8_t RKGReader::CalcDir(uint16_t frame) {
         m_dirDuration = 0;
     }
 
-    uint8_t inputs = m_decodedData[m_dirStart + (2 * m_dirIndex)];
+    uint8_t inputs = m_dirStart[2 * m_dirIndex];
 
     return inputs;
 }
@@ -171,8 +171,8 @@ DPad RKGReader::CalcTrick(uint16_t frame) {
         return DPad::None;
     }
 
-    uint8_t inputs = m_decodedData[m_trickStart + (2 * m_trickIndex)];
-    uint8_t tupleDuration = m_decodedData[m_trickStart + (2 * m_trickIndex) + 1];
+    uint8_t inputs = m_trickStart[2 * m_trickIndex];
+    uint8_t tupleDuration = m_trickStart[2 * m_trickIndex + 1];
     // Trick tuple duration is computed differently
     // The lower 4 bits of inputs represent how many repetitions of 256 frames there are for the
     // tuple duration
@@ -183,7 +183,7 @@ DPad RKGReader::CalcTrick(uint16_t frame) {
         m_trickIndex++;
         m_trickDuration = 0;
 
-        inputs = m_decodedData[m_trickStart + (2 * m_trickIndex)];
+        inputs = m_trickStart[2 * m_trickIndex];
         idleDuration = (inputs & 0x0F) * 256;
     }
 
