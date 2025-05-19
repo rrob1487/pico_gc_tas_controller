@@ -255,5 +255,12 @@ GCPadStatus RKGReader::CalcFrame(uint16_t frame) {
         m_frameCount++;
     }
 
+    // Check if all input streams have ended
+    if (m_faceIndex >= m_faceCount &&
+        m_dirIndex >= m_dirCount &&
+        m_trickIndex >= m_trickCount) {
+        done = true;
+    }
+
     return ret;
 }
