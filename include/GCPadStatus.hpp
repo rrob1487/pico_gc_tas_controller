@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cstdio>
 
 struct __attribute__((packed)) GCPadStatus {
     uint8_t a : 1;
@@ -48,3 +49,29 @@ static constexpr GCPadStatus s_defaultGCPadStatus = {
         .analogL = 0,
         .analogR = 0,
 };
+
+// Function definition within the header (small utility function)
+inline void printGCPadStatus(const GCPadStatus& status) {
+    printf("GCPadStatus:\n");
+    printf("  Buttons:\n");
+    printf("    A: %d | ", status.a);
+    printf("B: %d | ", status.b);
+    printf("X: %d | ", status.x);
+    printf("Y: %d | ", status.y);
+    printf("Z: %d | ", status.z);
+    printf("L: %d | ", status.l);
+    printf("R: %d | ", status.r);
+    printf("Start: %d\n", status.start);
+    printf("    DPad:\n");
+    printf("      Up: %d | ", status.dUp);
+    printf("      Down: %d | ", status.dDown);
+    printf("      Left: %d | ", status.dLeft);
+    printf("      Right: %d\n", status.dRight);
+    printf("  Sticks and Triggers:\n");
+    printf("    xStick: %u\n", status.xStick);
+    printf("    yStick: %u\n", status.yStick);
+    printf("    cXStick: %u\n", status.cxStick);
+    printf("    cYStick: %u\n", status.cyStick);
+    printf("    Analog L: %u\n", status.analogL);
+    printf("    Analog R: %u\n", status.analogR);
+}

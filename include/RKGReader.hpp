@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GCPadStatus.hpp"
+#include "InputReader.hpp"
 
 #include <cstddef>
 
@@ -14,12 +15,14 @@ enum class DPad {
     Right = 4,
 };
 
-class RKGReader {
+class RKGReader : public InputReader {
 public:
     RKGReader(uint8_t *pData);
     ~RKGReader();
 
     GCPadStatus CalcFrame(uint16_t frame);
+
+    bool Done() const override { return done; }
 
 private:
     uint8_t *YAZ1Decompress(uint8_t *pData);
@@ -56,4 +59,7 @@ private:
 
     uint8_t *m_decodedData;
     bool m_compressed;
+
+    // Set when done sending
+    bool done = false;
 };
